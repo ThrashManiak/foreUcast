@@ -1,0 +1,181 @@
+
+
+--------------------------------------------------------
+--  Constraints and information for columns in table EDUCATION
+--------------------------------------------------------
+   COMMENT ON COLUMN PROJECT.EDUCATION.TOTAL_UNIV IS 'Must be greater than zero (enforced by constraint EDU_salary_min)';
+   
+   ALTER TABLE PROJECT.EDUCATION ADD CONSTRAINT EDU_TOTAL_MIN CHECK (TOTAL_UNIV >= 0) ENABLE;
+   ALTER TABLE PROJECT.EDUCATION MODIFY (ID_COUNTRY CONSTRAINT EDU_ID_COUNTRY_NN NOT NULL ENABLE);
+  
+  
+  
+DELIMITER $$
+
+DROP TRIGGER IF EXISTS PROJECT.FER_EDU_COEFICIENT $$
+
+create TRIGGER PROJECT.FER_EDU_COEFICIENT
+before insert on EDUCATION
+FOR EACH ROW
+BEGIN
+        set new.EDU_COEFICIENT= new.PISA+new.DROP_OUT_PC;
+END 
+$$
+DELIMITER ;
+
+
+--------------------------------------------------------
+--  Constraints and information for columns in table universities
+--------------------------------------------------------
+
+ALTER TABLE PROJECT.UNIVERSITY ADD CONSTRAINT UNI_TOTAL_MIN CHECK (TOTAL >= 0) ENABLE;
+
+COMMENT ON COLUMN PROJECT.UNIVERSITY.TOTAL IS 'Total grade uni_row of the UNIVERSITY table. 
+  constraint for a positive number and a not null with default 0';
+  
+  
+  -- TRIGGER THAT CALCULATES THE TOTAL VALUE AND SENDS THE TOTAL VALUES TO EDUCATION AND COEFICIENT
+  
+DELIMITER $$
+
+DROP TRIGGER IF EXISTS PROJECT.FER_TOTAL $$
+
+create TRIGGER project.FER_TOTAL
+before insert on UNIVERSITY
+FOR EACH ROW
+BEGIN
+	DECLARE TOTAL_COUNTRY INT(10);
+    
+ 
+        set new.TOTAL = new.INDEX1+new.INDEX2;
+        
+       SELECT AVG(TOTAL) INTO TOTAL_COUNTRY FROM UNIVERSITY WHERE ID_COUNTRY=NEW.ID_COUNTRY GROUP BY ID_COUNTRY;
+        
+        UPDATE EDUCATION SET TOTAL_UNIV = NEW.TOTAL WHERE DATE=NEW.DATE AND ID_COUNTRY=NEW.ID_COUNTRY;
+        
+        UPDATE EDUCATION SET EDU_COEFICIENT = NEW.TOTAL + PISA WHERE DATE=NEW.DATE AND ID_COUNTRY=NEW.ID_COUNTRY;
+    END 
+$$
+DELIMITER ;
+
+
+
+
+
+--------------------------------------------------------
+--  DDL for Trigger UPDATE_INFORMATION
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER UPDATE_INFORMATION 
+  AFTER UPDATE OR DELETE OF UNI_NAME, INDEX1, INDEX2, INDEX3 ON UNIVERSITY
+  FOR EACH ROW
+BEGIN
+  add_info_history(:old.UNI_NAME, :old.INDEX1,:old.INDEX2, :old.INDEX3, sysdate);
+END UPDATE_INFORMATION ;
+/
+ALTER TRIGGER project.UPDATE_INFORMATION ENABLE;
+
+-----------------------------------------------------------
+-- TRIGGER FOR UPDATE TOTAL I PROCEDURE
+-----------------------------------------------------------
+DELIMITER $$
+
+CREATE TRIGGER 'project'.UPDATE_TOTAL 
+  AFTER UPDATE OR INSERT ON UNIVERSITY
+  FOR EACH ROW
+BEGIN
+
+	DECLARE IDENTY char(4);
+	
+ if 
+ 
+ 
+SELECT ID_EDU INTO IDENTY FROM WHERE;
+		add_total(:TOTAL);
+END $$
+DELIMITER ;
+/
+
+
+create PROCEDURE add_total ( 
+p_ID_COUNTRY EDUCATION.ID_COUNTRY%type,
+p_total EDUCATION.TOTAL%type,
+p_date EDUCATION.DATE%type
+)
+BEGIN
+  /*INSERT INTO EDUCATION(TOTAL_UNIV) VALUES(p_total) WHERE (COUNTRY_ID = p_ID_COUNTRY) ;*/
+  UPDATE TABLE EDUCATION SET TOTAL_UNIV = p_total where (COUNTRY_ID = p_ID_COUNTRY AND DATE= p_date) ;
+END add_total;
+
+
+---------------------------
+DELIMITER $$
+create TRIGGER project.FER_TOTAL
+AFTER insert on 'UNIVERSITY'
+FOR EACH ROW
+BEGIN
+        set new.TOTAL = new.INDEX1+new.INDEX2;
+        
+    END FER_TOTAL;
+$$
+DELIMITER	
+	
+--------------------------------------------------------
+--  
+--  DO NOT EXECUTE IN THE MAIN SQL SHELL!! EXECUTE IT IN ITS OWN SHELL
+--------------------------------------------------------
+
+-- FET DAVID COPY PASTE FUNCIONA
+create TRIGGER check_for_positive
+AFTER update on UNIVERSITY
+FOR EACH ROW
+
+BEGIN  
+DECLARE Br1 INT(10);
+/*if (OLD.TOTAL_UNIV < 0) THEN*/
+        SET Br1 = 5;
+	/*end if;
+*/
+END
+------
+
+
+
+
+--------------------------------------------------------
+--  DDL for Procedure UPDATE_INFORMATION
+--  DO NOT EXECUTE IN THE MAIN SQL SHELL!! EXECUTE IT IN ITS OWN SHELL
+--------------------------------------------------------
+
+create or replace PROCEDURE add_info_history
+  (  p_uni_name          INFO_HISTORY.UNI_NAME%type
+   , p_index1      INFO_HISTORY.INDEX1%type
+   , p_index2        INFO_HISTORY.INDEX2%type
+   , p_index3          INFO_HISTORY.INDEX3%type
+   , p_sysdate          INFO_HISTORY.DATE%type
+  )
+IS
+BEGIN
+  INSERT INTO INFO_HISTORY(UNI_NAME, INDEX1, INDEX2,
+                           INDEX3, DATE)
+    VALUES(p_uni_name, p_index1, p_index2, p_index3, p_sysdate);
+END add_info_history;
+
+----------------- FUNCIONA A MARIADB WORKBENCH
+
+DROP TRIGGER UPDATE_TOTAL;
+
+DELIMITER $$
+
+CREATE TRIGGER UPDATE_TOTAL 
+  AFTER INSERT ON UNIVERSITY
+  FOR EACH ROW
+BEGIN
+
+	DECLARE IDENTY INT(4);
+ 
+SELECT ID_UNI INTO IDENTY FROM UNIVERSITY;
+
+END $$
+DELIMITER ;
+-------------------
